@@ -1,0 +1,35 @@
+[
+  {
+    "id": "story_001",
+    "title": "Rauhalan tilan alkuvaiheet",
+    "slug": "rauhalan-alkuvaiheet",
+    "summary": "Kuinka Rauhalan tila raivattiin 1820-luvulla ja kasvoi suvun kotiseuduksi.",
+    "content": "Rauhalan tila perustettiin 1820-luvulla, kun ensimmäinen tunnettu esi-isä Heikki Hirvonen sai raivauslupansa Kontiolahden pitäjässä. Alkuvuosien elämä oli kovaa: metsää raivattiin peltoa varten, ja pienet sadot riippuivat sään armoilla.\n\nKahden sukupolven aikana tilasta kasvoi omavarainen maatila, jonka päärakennus valmistui 1860-luvulla. Antti Hirvonen (1852-1929) otti tilan haltuun 1870-luvulla ja johti sitä läpi nälkävuosien.",
+    "yearFrom": 1820,
+    "yearTo": 1900,
+    "relatedPersons": ["person_001"],
+    "relatedPlaces": ["place_001"]
+  },
+  {
+    "id": "story_002",
+    "title": "Muutto kaupunkiin",
+    "slug": "muutto-kaupunkiin",
+    "summary": "1900-luvun alun muuttoaalto maalta Joensuun kaupunkiin.",
+    "content": "1900-luvun alussa suvun nuorempi polvi lähti hakemaan opiskelupaikkoja ja työtä Joensuusta. Aino Hirvonen oli ensimmäinen suvun jäsen, joka suoritti seminaarin ja aloitti kansakoulunopettajana.\n\nMuutto ei ollut helppo — kaupungin elämä oli hyvin erilaista kuin tilan arki. Aino piti kuitenkin yhteyttä kotitilaan koko elämänsä ajan ja vietti kesät Rauhalassa.",
+    "yearFrom": 1900,
+    "yearTo": 1930,
+    "relatedPersons": ["person_004"],
+    "relatedPlaces": ["place_002", "place_001"]
+  },
+  {
+    "id": "story_003",
+    "title": "Sotavuodet Rauhalassa",
+    "slug": "sotavuodet-rauhalassa",
+    "summary": "Kuinka talvi- ja jatkosota vaikuttivat tilan elämään.",
+    "content": "Talvisodan syttyessä 1939 Toivo Hirvonen oli 21-vuotias. Hän ehti palvella molemmissa sodissa ja palasi Rauhalaan syksyllä 1944.\n\nSotien aikana tilaa piti pystyssä pääasiassa Kerttu Hirvonen appivanhempiensa kanssa. Karjaa oli vähennettävä, ja monet tavarat olivat säännöstelyssä. Sodan jälkeen tila jouduttiin osittain jakamaan, kun evakoita asutettiin Pohjois-Karjalaan.",
+    "yearFrom": 1939,
+    "yearTo": 1945,
+    "relatedPersons": ["person_005", "person_006"],
+    "relatedPlaces": ["place_001"]
+  }
+]
