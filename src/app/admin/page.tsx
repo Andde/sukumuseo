@@ -25,6 +25,21 @@ export default async function AdminPage() {
         Lisää valokuvia ja liitä niihin henkilöitä, paikkoja ja aiheita.
       </p>
 
+      <nav className="mt-6 flex flex-wrap gap-3 text-sm">
+        <Link
+          href="/admin/stories"
+          className="px-4 py-2 rounded-md border border-[color:var(--border)] hover:border-[color:var(--accent)]"
+        >
+          Tarinat
+        </Link>
+        <Link
+          href="/admin/branches"
+          className="px-4 py-2 rounded-md border border-[color:var(--border)] hover:border-[color:var(--accent)]"
+        >
+          Sukuhaarat
+        </Link>
+      </nav>
+
       <section className="mt-8 rounded-md border border-[color:var(--border)] bg-[color:var(--card)] p-6">
         <h2 className="text-xl font-semibold mb-4">Uusi valokuva</h2>
         <UploadForm
