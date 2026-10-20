@@ -27,6 +27,18 @@ export default async function AdminPage() {
 
       <nav className="mt-6 flex flex-wrap gap-3 text-sm">
         <Link
+          href="/admin/persons"
+          className="px-4 py-2 rounded-md border border-[color:var(--border)] hover:border-[color:var(--accent)]"
+        >
+          Henkilöt
+        </Link>
+        <Link
+          href="/admin/places"
+          className="px-4 py-2 rounded-md border border-[color:var(--border)] hover:border-[color:var(--accent)]"
+        >
+          Paikat
+        </Link>
+        <Link
           href="/admin/stories"
           className="px-4 py-2 rounded-md border border-[color:var(--border)] hover:border-[color:var(--accent)]"
         >
