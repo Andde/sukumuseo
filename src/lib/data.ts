@@ -76,8 +76,4 @@ export async function getFeaturedPersons(limit = 4): Promise<Person[]> {
   return (await readPersons()).slice(0, limit);
 }
 
-export function formatLifeSpan(person: Person): string {
-  const birth = person.birthDate?.slice(0, 4) ?? "?";
-  const death = person.deathDate?.slice(0, 4) ?? "";
-  return death ? `${birth}–${death}` : birth;
-}
+export { formatLifeSpan } from "@/lib/format";

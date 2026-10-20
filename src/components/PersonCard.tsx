@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Person } from "@/lib/types";
-import { formatLifeSpan } from "@/lib/data";
+import { formatLifeSpan } from "@/lib/format";
 import PhotoPlaceholder from "./PhotoPlaceholder";
 
 export default function PersonCard({ person }: { person: Person }) {
