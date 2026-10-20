@@ -14,7 +14,10 @@ async function checkAccess(formData: FormData) {
       : "/";
 
   const accessCode = getAccessCode();
-  if (accessCode && typeof code === "string" && code === accessCode) {
+  if (!accessCode) {
+    redirect(`/access?error=config&from=${encodeURIComponent(destination)}`);
+  }
+  if (typeof code === "string" && code.trim() === accessCode) {
     (await cookies()).set(ACCESS_COOKIE, accessCode, {
       httpOnly: true,
       sameSite: "lax",
@@ -57,8 +60,14 @@ export default async function AccessPage({ searchParams }: PageProps) {
             className="w-full px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--background)]"
           />
         </div>
-        {error && (
-          <p className="text-sm text-red-600">Väärä koodi. Yritä uudelleen.</p>
+        {error === "config" ? (
+          <p className="text-sm text-red-600">
+            Palvelimelta puuttuu ACCESS_CODE-asetus. Ota yhteyttä ylläpitoon.
+          </p>
+        ) : (
+          error && (
+            <p className="text-sm text-red-600">Väärä koodi. Yritä uudelleen.</p>
+          )
         )}
         <button
           type="submit"
