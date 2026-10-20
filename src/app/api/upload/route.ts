@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { put } from "@vercel/blob";
 import {
+  blobEnabled,
   nextPersonId,
   nextPhotoId,
   nextPlaceId,
@@ -28,34 +30,64 @@ const EXT_BY_MIME: Record<string, string> = {
   "image/heif": ".heif",
 };
 
-// Multipart body: `file` (File), plus optional `title`, `description`, `year`,
+// Multipart body: either `file` (File) or, when the browser has already
+// uploaded the image to Vercel Blob, `blobPathname` + `originalFilename`.
+// Plus optional `title`, `description`, `year`,
 // `placeId`, `personIds` (comma-separated), `tags` (comma-separated), plus
 // free-text `newPersonNames` (comma-separated full names) and `newPlaceName`.
 // Free-text names reuse an existing record when the name matches
 // (case-insensitive), otherwise a new person/place is created.
-// TODO: auth. Family museum runs locally today; add a shared-secret header
-// (`x-admin-token`) before exposing this over the network.
+// Auth: only the site-wide access gate in proxy.ts.
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const file = form.get("file");
-  if (!(file instanceof File)) {
+  const blobPathname = (form.get("blobPathname") as string | null)?.trim();
+  if (!(file instanceof File) && !blobPathname) {
     return NextResponse.json({ error: "missing file" }, { status: 400 });
   }
+  if (
+    blobPathname &&
+    (!blobEnabled() ||
+      !blobPathname.startsWith("photos/") ||
+      blobPathname.split("/").some((p) => !p || p === "." || p === ".."))
+  ) {
+    return NextResponse.json({ error: "invalid blobPathname" }, { status: 400 });
+  }
 
-  const ext =
-    EXT_BY_MIME[file.type] ??
-    path.extname(file.name).toLowerCase() ??
-    ".jpg";
-
-  await fs.mkdir(PHOTOS_DIR, { recursive: true });
   const photos = await readPhotos();
   const id = nextPhotoId(photos);
-  const filename = `${id}${ext}`;
-  const abs = path.join(PHOTOS_DIR, filename);
-  const buf = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(abs, buf);
+  let imageUrl: string;
+  let originalFilename: string;
 
-  const title = (form.get("title") as string | null)?.trim() || file.name;
+  if (blobPathname) {
+    // Image is already in the private blob store; serve it via /api/files.
+    imageUrl = `/api/files/${blobPathname}`;
+    originalFilename =
+      (form.get("originalFilename") as string | null)?.trim() ||
+      path.basename(blobPathname);
+  } else {
+    const upload = file as File;
+    originalFilename = upload.name;
+    const ext =
+      EXT_BY_MIME[upload.type] || path.extname(upload.name).toLowerCase() || ".jpg";
+    const filename = `${id}${ext}`;
+    const buf = Buffer.from(await upload.arrayBuffer());
+    if (blobEnabled()) {
+      const blob = await put(`photos/${filename}`, buf, {
+        access: "private",
+        addRandomSuffix: true,
+        contentType: upload.type || undefined,
+      });
+      imageUrl = `/api/files/${blob.pathname}`;
+    } else {
+      await fs.mkdir(PHOTOS_DIR, { recursive: true });
+      await fs.writeFile(path.join(PHOTOS_DIR, filename), buf);
+      imageUrl = `/photos/${filename}`;
+    }
+  }
+
+  const title =
+    (form.get("title") as string | null)?.trim() || originalFilename;
   const description =
     (form.get("description") as string | null)?.trim() || undefined;
   const yearRaw = (form.get("year") as string | null)?.trim();
@@ -104,8 +136,8 @@ export async function POST(req: NextRequest) {
     title,
     description,
     year: Number.isFinite(year) ? year : undefined,
-    imageUrl: `/photos/${filename}`,
-    originalFilename: file.name,
+    imageUrl,
+    originalFilename,
     uploadedAt: new Date().toISOString(),
     placeId,
     personIds: personIds.length ? personIds : undefined,

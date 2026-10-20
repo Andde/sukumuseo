@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { get, put } from "@vercel/blob";
 import type {
   Person,
   Photo,
@@ -11,9 +12,20 @@ import type {
 // Runtime-facing read/write layer. data.ts wraps these for the render path;
 // admin API routes call the writers directly.
 //
-// This assumes a single writer (the maintainer using /admin locally). If the
-// site ever runs multi-user, put a mutex or move to a real DB before adding
-// concurrent writes.
+// Two backends, picked by the BLOB_READ_WRITE_TOKEN env var:
+//  - set (Vercel): each collection is a private blob `data/<name>.json`.
+//    Until a collection is first written, reads fall back to the bundled
+//    src/data/<name>.json (the seed), so a fresh store works without a
+//    migration step. After the first write the blob is the source of truth and
+//    later edits to the seed files no longer show up.
+//  - unset (local dev): the src/data/*.json files are read and written
+//    directly.
+//
+// This assumes a single writer (the maintainer using /admin). If the site ever
+// runs multi-user, add locking or move to a real DB before adding concurrent
+// writes.
+
+export const blobEnabled = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 
 const DATA_DIR = path.join(process.cwd(), "src", "data");
 
@@ -26,6 +38,16 @@ type FileMap = {
 };
 
 async function readJson<K extends keyof FileMap>(name: K): Promise<FileMap[K]> {
+  if (blobEnabled()) {
+    // useCache:false reads straight from origin so edits show up immediately.
+    const res = await get(`data/${name}.json`, {
+      access: "private",
+      useCache: false,
+    });
+    if (res && res.statusCode === 200) {
+      return JSON.parse(await new Response(res.stream).text()) as FileMap[K];
+    }
+  }
   const file = path.join(DATA_DIR, `${name}.json`);
   const raw = await fs.readFile(file, "utf8");
   return JSON.parse(raw) as FileMap[K];
@@ -35,6 +57,15 @@ async function writeJson<K extends keyof FileMap>(
   name: K,
   data: FileMap[K],
 ): Promise<void> {
+  if (blobEnabled()) {
+    await put(`data/${name}.json`, JSON.stringify(data, null, 2) + "\n", {
+      access: "private",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: "application/json",
+    });
+    return;
+  }
   const file = path.join(DATA_DIR, `${name}.json`);
   const tmp = `${file}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");

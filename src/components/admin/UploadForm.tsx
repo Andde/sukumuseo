@@ -2,15 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { upload } from "@vercel/blob/client";
 
 type Option = { id: string; name: string };
 
+// `direct`: upload the image from the browser straight to Vercel Blob (needed
+// on Vercel, where request bodies are capped at 4.5 MB) and send only its
+// pathname to /api/upload. Otherwise the file goes through /api/upload itself.
 export default function UploadForm({
   persons,
   places,
+  direct,
 }: {
   persons: Option[];
   places: Option[];
+  direct: boolean;
 }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -33,7 +39,6 @@ export default function UploadForm({
       return;
     }
     const form = new FormData();
-    form.set("file", file);
     if (title.trim()) form.set("title", title.trim());
     if (description.trim()) form.set("description", description.trim());
     if (year.trim()) form.set("year", year.trim());
@@ -49,6 +54,18 @@ export default function UploadForm({
 
     setBusy(true);
     try {
+      if (direct) {
+        const dot = file.name.lastIndexOf(".");
+        const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
+        const blob = await upload(`photos/photo${ext}`, file, {
+          access: "private",
+          handleUploadUrl: "/api/upload/token",
+        });
+        form.set("blobPathname", blob.pathname);
+        form.set("originalFilename", file.name);
+      } else {
+        form.set("file", file);
+      }
       const res = await fetch("/api/upload", { method: "POST", body: form });
       if (!res.ok) {
         const body = await res.text();

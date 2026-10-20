@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPersons, getPlaces, getPhotos } from "@/lib/data";
 import UploadForm from "@/components/admin/UploadForm";
+import { blobEnabled } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Ylläpito · Hirvosen sukumuseo" };
@@ -29,6 +30,7 @@ export default async function AdminPage() {
         <UploadForm
           persons={persons.map((p) => ({ id: p.id, name: p.fullName }))}
           places={places.map((p) => ({ id: p.id, name: p.name }))}
+          direct={blobEnabled()}
         />
       </section>
 
