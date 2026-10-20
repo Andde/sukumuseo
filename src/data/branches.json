@@ -1,14 +1,1 @@
-[
-  {
-    "id": "branch_001",
-    "name": "Rauhalan sukuhaara",
-    "description": "Rauhalan tilan jälkeläiset Pohjois-Karjalasta.",
-    "rootPersonId": "person_001"
-  },
-  {
-    "id": "branch_002",
-    "name": "Kaupungin sukuhaara",
-    "description": "1900-luvun alussa Joensuuhun muuttanut sukulinja.",
-    "rootPersonId": "person_004"
-  }
-]
+[]

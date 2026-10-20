@@ -1,32 +1,14 @@
 [
   {
     "id": "place_001",
-    "name": "Rauhalan tila",
-    "municipality": "Kontiolahti",
-    "lat": 62.7644,
-    "lng": 29.8478,
-    "description": "Suvun historiallinen maatila Pohjois-Karjalassa. Perustettu 1820-luvulla ja pysynyt saman suvun hallinnassa yli 200 vuotta.",
-    "photoIds": ["photo_001", "photo_002", "photo_003", "photo_006", "photo_007"],
-    "personIds": ["person_001", "person_002", "person_003", "person_004", "person_005", "person_006"]
+    "name": "Virsto"
   },
   {
     "id": "place_002",
-    "name": "Joensuu",
-    "municipality": "Joensuu",
-    "lat": 62.6010,
-    "lng": 29.7636,
-    "description": "Pohjois-Karjalan maakuntakeskus, johon suvun jäseniä muutti 1900-luvun alussa työ- ja opintomahdollisuuksien perässä.",
-    "photoIds": ["photo_004", "photo_008"],
-    "personIds": ["person_004"]
+    "name": "Vahtila"
   },
   {
     "id": "place_003",
-    "name": "Heinävaara",
-    "municipality": "Kontiolahti",
-    "lat": 62.6511,
-    "lng": 30.0219,
-    "description": "Pieni kylä Kontiolahden itäosassa. Kertun Hirvosen synnyinseutu ja suvun toisen linjan lähtökohta.",
-    "photoIds": [],
-    "personIds": ["person_005"]
+    "name": "Multisuo"
   }
 ]
