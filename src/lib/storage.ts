@@ -54,11 +54,16 @@ export const writePlaces = (d: Place[]) => writeJson("places", d);
 export const writeStories = (d: Story[]) => writeJson("stories", d);
 export const writeBranches = (d: FamilyBranch[]) => writeJson("branches", d);
 
-export function nextPhotoId(photos: Photo[]): string {
-  const nums = photos
-    .map((p) => /^photo_(\d+)$/.exec(p.id)?.[1])
+function nextId(prefix: string, items: { id: string }[]): string {
+  const re = new RegExp(`^${prefix}_(\\d+)$`);
+  const nums = items
+    .map((i) => re.exec(i.id)?.[1])
     .filter((n): n is string => !!n)
     .map((n) => parseInt(n, 10));
   const next = (nums.length ? Math.max(...nums) : 0) + 1;
-  return `photo_${String(next).padStart(3, "0")}`;
+  return `${prefix}_${String(next).padStart(3, "0")}`;
 }
+
+export const nextPhotoId = (photos: Photo[]) => nextId("photo", photos);
+export const nextPersonId = (persons: Person[]) => nextId("person", persons);
+export const nextPlaceId = (places: Place[]) => nextId("place", places);

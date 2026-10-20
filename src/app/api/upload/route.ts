@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  nextPersonId,
   nextPhotoId,
+  nextPlaceId,
+  readPersons,
   readPhotos,
+  readPlaces,
+  writePersons,
   writePhotos,
+  writePlaces,
 } from "@/lib/storage";
-import type { Photo } from "@/lib/types";
+import type { Person, Photo, Place } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +29,10 @@ const EXT_BY_MIME: Record<string, string> = {
 };
 
 // Multipart body: `file` (File), plus optional `title`, `description`, `year`,
-// `placeId`, `personIds` (comma-separated), `tags` (comma-separated).
+// `placeId`, `personIds` (comma-separated), `tags` (comma-separated), plus
+// free-text `newPersonNames` (comma-separated full names) and `newPlaceName`.
+// Free-text names reuse an existing record when the name matches
+// (case-insensitive), otherwise a new person/place is created.
 // TODO: auth. Family museum runs locally today; add a shared-secret header
 // (`x-admin-token`) before exposing this over the network.
 export async function POST(req: NextRequest) {
@@ -51,10 +60,44 @@ export async function POST(req: NextRequest) {
     (form.get("description") as string | null)?.trim() || undefined;
   const yearRaw = (form.get("year") as string | null)?.trim();
   const year = yearRaw ? Number(yearRaw) : undefined;
-  const placeId =
-    (form.get("placeId") as string | null)?.trim() || undefined;
+  let placeId = (form.get("placeId") as string | null)?.trim() || undefined;
   const personIds = splitCsv(form.get("personIds"));
   const tags = splitCsv(form.get("tags"));
+
+  const newPersonNames = splitCsv(form.get("newPersonNames"));
+  if (newPersonNames.length) {
+    const persons = await readPersons();
+    let changed = false;
+    for (const name of newPersonNames) {
+      const existing = persons.find(
+        (p) => p.fullName.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing) {
+        if (!personIds.includes(existing.id)) personIds.push(existing.id);
+        continue;
+      }
+      const person = makePerson(nextPersonId(persons), name);
+      persons.push(person);
+      personIds.push(person.id);
+      changed = true;
+    }
+    if (changed) await writePersons(persons);
+  }
+
+  const newPlaceName = (form.get("newPlaceName") as string | null)?.trim();
+  if (newPlaceName) {
+    const places = await readPlaces();
+    const existing = places.find(
+      (p) => p.name.toLowerCase() === newPlaceName.toLowerCase(),
+    );
+    if (existing) {
+      placeId = existing.id;
+    } else {
+      const place: Place = { id: nextPlaceId(places), name: newPlaceName };
+      await writePlaces([...places, place]);
+      placeId = place.id;
+    }
+  }
 
   const photo: Photo = {
     id,
@@ -72,6 +115,15 @@ export async function POST(req: NextRequest) {
 
   await writePhotos([...photos, photo]);
   return NextResponse.json({ photo }, { status: 201 });
+}
+
+// "Maija Liisa Hirvonen" -> first "Maija Liisa", last "Hirvonen". A single
+// word is stored as a first name only.
+function makePerson(id: string, fullName: string): Person {
+  const parts = fullName.split(/\s+/);
+  const lastName = parts.length > 1 ? parts[parts.length - 1] : "";
+  const firstName = parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0];
+  return { id, firstName, lastName, fullName };
 }
 
 function splitCsv(v: FormDataEntryValue | null): string[] {

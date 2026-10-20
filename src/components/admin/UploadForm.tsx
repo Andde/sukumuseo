@@ -19,6 +19,8 @@ export default function UploadForm({
   const [year, setYear] = useState("");
   const [placeId, setPlaceId] = useState("");
   const [selectedPersons, setSelectedPersons] = useState<Set<string>>(new Set());
+  const [newPersonNames, setNewPersonNames] = useState("");
+  const [newPlaceName, setNewPlaceName] = useState("");
   const [tags, setTags] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,10 @@ export default function UploadForm({
     if (selectedPersons.size) {
       form.set("personIds", [...selectedPersons].join(","));
     }
+    if (newPersonNames.trim()) {
+      form.set("newPersonNames", newPersonNames.trim());
+    }
+    if (newPlaceName.trim()) form.set("newPlaceName", newPlaceName.trim());
     if (tags.trim()) form.set("tags", tags.trim());
 
     setBusy(true);
@@ -126,6 +132,13 @@ export default function UploadForm({
               </option>
             ))}
           </select>
+          <input
+            type="text"
+            value={newPlaceName}
+            onChange={(e) => setNewPlaceName(e.target.value)}
+            placeholder="tai kirjoita uusi paikka"
+            className={inputCls}
+          />
         </label>
       </div>
 
@@ -150,8 +163,17 @@ export default function UploadForm({
             );
           })}
         </div>
+        <input
+          type="text"
+          value={newPersonNames}
+          onChange={(e) => setNewPersonNames(e.target.value)}
+          placeholder="Uudet henkilöt nimellä, pilkulla erotettuna: Maija Virtanen, Pekka Hirvonen"
+          className={inputCls}
+        />
         <p className="text-xs text-[color:var(--muted)]">
-          Kasvojen tarkka merkintä tehdään latauksen jälkeen.
+          Uusi nimi luo henkilön, jos samannimistä ei vielä ole. Jos kirjoitat
+          uuden paikan, se ohittaa listasta valitun. Kasvojen tarkka merkintä
+          tehdään latauksen jälkeen.
         </p>
       </fieldset>
 
