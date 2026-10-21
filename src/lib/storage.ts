@@ -27,6 +27,16 @@ import type {
 
 export const blobEnabled = () => !!process.env.BLOB_READ_WRITE_TOKEN;
 
+// On Vercel the filesystem is read-only, so a missing token must fail loudly
+// instead of falling through to the local-file backend.
+export function assertWritable(): void {
+  if (process.env.VERCEL && !blobEnabled()) {
+    throw new Error(
+      "BLOB_READ_WRITE_TOKEN puuttuu: yhdistä Blob-store projektiin ja deployaa uudelleen.",
+    );
+  }
+}
+
 const DATA_DIR = path.join(process.cwd(), "src", "data");
 
 type FileMap = {
@@ -57,6 +67,7 @@ async function writeJson<K extends keyof FileMap>(
   name: K,
   data: FileMap[K],
 ): Promise<void> {
+  assertWritable();
   if (blobEnabled()) {
     await put(`data/${name}.json`, JSON.stringify(data, null, 2) + "\n", {
       access: "private",

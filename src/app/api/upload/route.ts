@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { put } from "@vercel/blob";
 import {
+  assertWritable,
   blobEnabled,
   nextPersonId,
   nextPhotoId,
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleUpload(req: NextRequest) {
+  assertWritable();
   const form = await req.formData();
   const file = form.get("file");
   const blobPathname = (form.get("blobPathname") as string | null)?.trim();
