@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import type { FaceBox } from "@/lib/types";
 
@@ -31,6 +33,7 @@ export default function FaceTagger({
   initialFaces: FaceBox[];
   persons: Person[];
 }) {
+  const router = useRouter();
   const imgRef = useRef<HTMLImageElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [boxes, setBoxes] = useState<WorkingBox[]>(
@@ -266,6 +269,8 @@ export default function FaceTagger({
       if (!res.ok) throw new Error(await errorText(res, "Kuvan tallennus"));
       setSaved(true);
       setInfo(null);
+      // Refresh server data so the person/photo pages reflect the new tags.
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -369,6 +374,22 @@ export default function FaceTagger({
           </button>
           {saved && (
             <span className="text-sm text-green-600">Tallennettu ✓</span>
+          )}
+          {saved && (
+            <>
+              <Link
+                href={`/photos/${photoId}`}
+                className="text-sm text-[color:var(--accent)] hover:underline"
+              >
+                Katso kuvasivu →
+              </Link>
+              <Link
+                href="/admin"
+                className="text-sm text-[color:var(--accent)] hover:underline"
+              >
+                Ylläpitoon / lisää uusi kuva
+              </Link>
+            </>
           )}
           {error && (
             <span className="text-sm text-red-600" role="alert">
