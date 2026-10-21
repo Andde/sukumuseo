@@ -2,21 +2,23 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { upload } from "@vercel/blob/client";
+import { upload, uploadPresigned } from "@vercel/blob/client";
 
 type Option = { id: string; name: string };
 
-// `direct`: upload the image from the browser straight to Vercel Blob (needed
+// `mode`: upload the image from the browser straight to Vercel Blob (needed
 // on Vercel, where request bodies are capped at 4.5 MB) and send only its
-// pathname to /api/upload. Otherwise the file goes through /api/upload itself.
+// pathname to /api/upload. "token" adds a random suffix server-side;
+// "presigned" (OIDC stores) can't, so the name is made unique here. With null
+// the file goes through /api/upload itself.
 export default function UploadForm({
   persons,
   places,
-  direct,
+  mode,
 }: {
   persons: Option[];
   places: Option[];
-  direct: boolean;
+  mode: "token" | "presigned" | null;
 }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -54,13 +56,21 @@ export default function UploadForm({
 
     setBusy(true);
     try {
-      if (direct) {
+      if (mode) {
         const dot = file.name.lastIndexOf(".");
         const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
-        const blob = await upload(`photos/photo${ext}`, file, {
-          access: "private",
+        const options = {
+          access: "private" as const,
           handleUploadUrl: "/api/upload/token",
-        });
+        };
+        const blob =
+          mode === "presigned"
+            ? await uploadPresigned(
+                `photos/photo-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}${ext}`,
+                file,
+                options,
+              )
+            : await upload(`photos/photo${ext}`, file, options);
         form.set("blobPathname", blob.pathname);
         form.set("originalFilename", file.name);
       } else {

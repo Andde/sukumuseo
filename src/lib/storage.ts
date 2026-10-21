@@ -12,27 +12,40 @@ import type {
 // Runtime-facing read/write layer. data.ts wraps these for the render path;
 // admin API routes call the writers directly.
 //
-// Two backends, picked by the BLOB_READ_WRITE_TOKEN env var:
-//  - set (Vercel): each collection is a private blob `data/<name>.json`.
+// Two backends, picked by whether a Blob store is configured (see blobEnabled):
+//  - configured (Vercel): each collection is a private blob `data/<name>.json`.
 //    Until a collection is first written, reads fall back to the bundled
 //    src/data/<name>.json (the seed), so a fresh store works without a
 //    migration step. After the first write the blob is the source of truth and
 //    later edits to the seed files no longer show up.
-//  - unset (local dev): the src/data/*.json files are read and written
+//  - not configured (local dev): the src/data/*.json files are read and written
 //    directly.
 //
 // This assumes a single writer (the maintainer using /admin). If the site ever
 // runs multi-user, add locking or move to a real DB before adding concurrent
 // writes.
 
-export const blobEnabled = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+// Newer Vercel Blob stores authenticate with OIDC (BLOB_STORE_ID plus the
+// VERCEL_OIDC_TOKEN Vercel injects at runtime) and have no read-write token;
+// older stores expose BLOB_READ_WRITE_TOKEN. The SDK accepts either.
+export const blobEnabled = () =>
+  !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
-// On Vercel the filesystem is read-only, so a missing token must fail loudly
-// instead of falling through to the local-file backend.
+// How the browser uploads straight to Blob: "token" (client token, needs the
+// read-write token), "presigned" (OIDC stores) or null (no Blob store).
+export type DirectUploadMode = "token" | "presigned" | null;
+export function directUploadMode(): DirectUploadMode {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return "token";
+  if (process.env.BLOB_STORE_ID) return "presigned";
+  return null;
+}
+
+// On Vercel the filesystem is read-only, so a missing Blob store must fail
+// loudly instead of falling through to the local-file backend.
 export function assertWritable(): void {
   if (process.env.VERCEL && !blobEnabled()) {
     throw new Error(
-      "BLOB_READ_WRITE_TOKEN puuttuu: yhdistä Blob-store projektiin ja deployaa uudelleen.",
+      "Blob-store puuttuu: yhdistä store projektiin (BLOB_STORE_ID tai BLOB_READ_WRITE_TOKEN) ja deployaa uudelleen.",
     );
   }
 }
