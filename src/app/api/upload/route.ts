@@ -39,6 +39,17 @@ const EXT_BY_MIME: Record<string, string> = {
 // (case-insensitive), otherwise a new person/place is created.
 // Auth: only the site-wide access gate in proxy.ts.
 export async function POST(req: NextRequest) {
+  try {
+    return await handleUpload(req);
+  } catch (err) {
+    // Surface the cause (e.g. a Blob store/token problem) instead of a bare 500.
+    console.error("upload failed", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function handleUpload(req: NextRequest) {
   const form = await req.formData();
   const file = form.get("file");
   const blobPathname = (form.get("blobPathname") as string | null)?.trim();

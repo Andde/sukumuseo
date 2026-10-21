@@ -68,8 +68,12 @@ export default function UploadForm({
       }
       const res = await fetch("/api/upload", { method: "POST", body: form });
       if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `HTTP ${res.status}`);
+        const text = await res.text();
+        let message = text;
+        try {
+          message = (JSON.parse(text) as { error?: string }).error ?? text;
+        } catch {}
+        throw new Error(message || `HTTP ${res.status}`);
       }
       const { photo } = (await res.json()) as { photo: { id: string } };
       router.push(`/admin/photos/${photo.id}`);
