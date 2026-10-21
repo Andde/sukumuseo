@@ -44,6 +44,14 @@ export default function FaceTagger({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const faceApiRef = useRef<FaceApi | null>(null);
+  const [imgState, setImgState] = useState<"loading" | "ok" | "error">("loading");
+  const [info, setInfo] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  } | null>(null);
 
   const personById = new Map(persons.map((p) => [p.id, p]));
 
@@ -75,6 +83,16 @@ export default function FaceTagger({
   async function detect() {
     const img = imgRef.current;
     if (!img) return;
+    setError(null);
+    setInfo(null);
+    if (imgState === "error" || (img.complete && img.naturalWidth === 0)) {
+      setError("Kuvaa ei voitu ladata, joten kasvoja ei voi tunnistaa.");
+      return;
+    }
+    if (!img.complete) {
+      setError("Kuva latautuu vielä — yritä hetken kuluttua uudelleen.");
+      return;
+    }
     const faceapi = await ensureModels();
     if (!faceapi) return;
     setDetecting(true);
@@ -130,8 +148,17 @@ export default function FaceTagger({
       });
 
       setBoxes((prev) => dedupe([...prev, ...fresh]));
+      setSaved(false);
+      setInfo(
+        fresh.length
+          ? `Löytyi ${fresh.length} kasvoa. Valitse jokaiselle henkilö ja paina Tallenna.`
+          : "Malli ei löytänyt kasvoja. Piirrä laatikko kuvaan hiirellä vetämällä, niin voit merkitä kasvon käsin.",
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      console.error("face detection failed", e);
+      setError(
+        `Tunnistus epäonnistui: ${e instanceof Error ? e.message : String(e)}`,
+      );
     } finally {
       setDetecting(false);
     }
@@ -160,6 +187,43 @@ export default function FaceTagger({
     setSaved(false);
   }
 
+  function relPoint(e: React.PointerEvent<HTMLDivElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)),
+    };
+  }
+
+  function onDrawStart(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const p = relPoint(e);
+    setDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+  }
+
+  function onDrawMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!draft) return;
+    const p = relPoint(e);
+    setDraft({ ...draft, x1: p.x, y1: p.y });
+  }
+
+  function onDrawEnd() {
+    if (!draft) return;
+    const x = Math.min(draft.x0, draft.x1);
+    const y = Math.min(draft.y0, draft.y1);
+    const w = Math.abs(draft.x1 - draft.x0);
+    const h = Math.abs(draft.y1 - draft.y0);
+    setDraft(null);
+    // Ignore stray clicks; a real face box is at least ~2% of the image.
+    if (w < 0.02 || h < 0.02) return;
+    setBoxes((prev) => [
+      ...prev,
+      { x, y, w, h, _key: `manual-${Date.now()}` },
+    ]);
+    setSaved(false);
+    setInfo("Laatikko lisätty. Valitse sille henkilö oikealta ja paina Tallenna.");
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
@@ -175,7 +239,7 @@ export default function FaceTagger({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ addFaceDescriptor: b.descriptor }),
           });
-          if (!res.ok) throw new Error(`persons PATCH ${res.status}`);
+          if (!res.ok) throw new Error(await errorText(res, "Henkilön tallennus"));
         }
       }
 
@@ -199,8 +263,9 @@ export default function FaceTagger({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ faces, personIds }),
       });
-      if (!res.ok) throw new Error(`photos PATCH ${res.status}`);
+      if (!res.ok) throw new Error(await errorText(res, "Kuvan tallennus"));
       setSaved(true);
+      setInfo(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -221,8 +286,29 @@ export default function FaceTagger({
             src={imageUrl}
             alt=""
             crossOrigin="anonymous"
+            onLoad={() => setImgState("ok")}
+            onError={() => setImgState("error")}
             className="block max-w-full h-auto"
           />
+          {/* Drag on the photo to draw a face box by hand. */}
+          <div
+            className="absolute inset-0 cursor-crosshair touch-none"
+            onPointerDown={onDrawStart}
+            onPointerMove={onDrawMove}
+            onPointerUp={onDrawEnd}
+            onPointerCancel={() => setDraft(null)}
+          />
+          {draft && (
+            <div
+              className="absolute border-2 border-dashed border-sky-400 pointer-events-none"
+              style={{
+                left: `${Math.min(draft.x0, draft.x1) * 100}%`,
+                top: `${Math.min(draft.y0, draft.y1) * 100}%`,
+                width: `${Math.abs(draft.x1 - draft.x0) * 100}%`,
+                height: `${Math.abs(draft.y1 - draft.y0) * 100}%`,
+              }}
+            />
+          )}
           {boxes.map((b) => {
             const person = b.personId ? personById.get(b.personId) : undefined;
             const suggested = b.suggestedPersonId
@@ -276,7 +362,7 @@ export default function FaceTagger({
           <button
             type="button"
             onClick={save}
-            disabled={saving || boxes.length === 0}
+            disabled={saving}
             className="px-3 py-2 rounded-md border border-[color:var(--border)] text-sm disabled:opacity-60"
           >
             {saving ? "Tallennetaan…" : "Tallenna"}
@@ -290,9 +376,18 @@ export default function FaceTagger({
             </span>
           )}
         </div>
+        {imgState === "error" && (
+          <p className="mt-2 text-sm text-red-600" role="alert">
+            Kuvaa ei voitu ladata. Tarkista, että olet kirjautunut sisään ja
+            lataa sivu uudelleen.
+          </p>
+        )}
+        {info && !error && (
+          <p className="mt-2 text-sm text-[color:var(--muted)]">{info}</p>
+        )}
         <p className="mt-2 text-xs text-[color:var(--muted)]">
           Vihreä laatikko = vahvistettu, keltainen = mallin ehdotus, punainen =
-          tuntematon.
+          tuntematon. Vedä kuvassa piirtääksesi laatikon käsin.
         </p>
       </div>
 
@@ -302,7 +397,8 @@ export default function FaceTagger({
         </h2>
         {boxes.length === 0 && (
           <p className="text-sm text-[color:var(--muted)]">
-            Paina &ldquo;Tunnista kasvot&rdquo; aloittaaksesi.
+            Paina &ldquo;Tunnista kasvot&rdquo; tai piirrä laatikko kuvaan
+            vetämällä.
           </p>
         )}
         <ul className="grid gap-3">
@@ -380,4 +476,20 @@ function dedupe(list: WorkingBox[]): WorkingBox[] {
     else out[dup] = b;
   }
   return out;
+}
+
+// Prefer the server's { error } message over a bare status code.
+async function errorText(res: Response, what: string): Promise<string> {
+  let detail = "";
+  try {
+    const text = await res.text();
+    try {
+      detail = (JSON.parse(text) as { error?: string }).error ?? text;
+    } catch {
+      detail = text;
+    }
+  } catch {}
+  return `${what} epäonnistui (HTTP ${res.status})${
+    detail ? `: ${detail.slice(0, 200)}` : ""
+  }`;
 }

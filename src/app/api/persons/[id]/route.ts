@@ -36,7 +36,20 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const patch = (await req.json()) as PatchBody;
+  try {
+    return await patchPerson(req, id);
+  } catch (err) {
+    console.error("person patch failed", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function patchPerson(req: NextRequest, id: string) {
+  const patch = (await req.json().catch(() => null)) as PatchBody | null;
+  if (!patch || typeof patch !== "object") {
+    return NextResponse.json({ error: "Virheellinen pyyntö." }, { status: 400 });
+  }
 
   const persons = await readPersons();
   const idx = persons.findIndex((p) => p.id === id);
